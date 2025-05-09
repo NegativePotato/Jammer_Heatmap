@@ -12,10 +12,18 @@ library(googledrive)
 library(googlesheets4)
 library(DT)
 library(RColorBrewer)
+library(colourpicker)
+
+# Todo 
+# - Add autosave to online database (protect authetification tokens)
+# - Add possibility to upload custom list of jammers 
+# - Compute lane out + Distance out/Location
+# - Left click is one team, right click is another team
+
 
 # Authetication
-googledrive::drive_auth(email = "jammer.stats.app@gmail.com") 
-gs4_auth(email = "jammer.stats.app@gmail.com") #scope = "https://www.googleapis.com/auth/drive")
+# googledrive::drive_auth(email = "jammer.stats.app@gmail.com") 
+# gs4_auth(email = "jammer.stats.app@gmail.com") #scope = "https://www.googleapis.com/auth/drive")
 
 
 # testttssss
@@ -27,35 +35,83 @@ gs4_auth(email = "jammer.stats.app@gmail.com") #scope = "https://www.googleapis.
 
 # Load data and images
 track_img <- readPNG("track_background.png")
+img_dims <- dim(track_img)
+img_height <- img_dims[1]
+img_width <- img_dims[2]
 
+# List of jammers
+mrd_jammer_list <- c("Amperslam - Amps",
+                     "Beryl Roller - Beryl",
+                     "Black Magick - Magick",
+                     "Dalek - Dalek",
+                     "Damnit Janet - DJ",
+                     "Darkhorse - Neigh",
+                     "Dil-Emma - Dil",
+                     "Get Bucky - Bucky",
+                     "Hawai'i KO - KO",
+                     "Kat Scratch Fever - Fever",
+                     "LaMarche Madness - Marche",
+                     "Oui-Plash - Oui",
+                     "Radiomacktive - Dio",
+                     "Seam Ripper - Ripper", 
+                     "Zooma Thurman - Zooma",
+                     "Other")
 
 # Define UI
-
 ui <- page_sidebar(
   sidebar = sidebar(
-    numericInput(
-      inputId = "half_number",
-      label = "Half number", 
-      value = 1,
-      step = 1,
-      min = 1,
-      max = 4
+    fluidRow(
+      column(6, style = "padding-right: 2px;", 
+             numericInput(
+               inputId = "half_number",
+               label = "Half #", 
+               value = 1,
+               step = 1,
+               min = 1,
+               max = 4
+             )),
+      column(6, style = "padding-left: 2px;", 
+             numericInput(
+               inputId = "jam_number",
+               label = "Jam #", 
+               value = 1,
+               step = 1,
+               min = 1
+             )),
+      style = "margin-top: 0px; margin-bottom: 0px, padding-bottom: 0px;"
     ),
-    numericInput(
-      inputId = "jam_number",
-      label = "Jam number", 
-      value = 1,
-      step = 1,
-      min = 1
-    ),
-    selectInput(inputId = "n_blockers", 
+    hr(style = "border-top: 1px solid #000000; margin-top: 0px; margin-bottom: 0px"),
+    selectInput(inputId = "n_blockers_1", 
                 label = "Number of Blockers", 
                 choices = c(4,3,2,1), 
                 selected = 4
     ),
+    selectInput(
+      inputId = "jammer_name_1",
+      label = "Jammer Name 1",
+      choices = mrd_jammer_list[-2],
+      selected = mrd_jammer_list[1]
+    ),
     textInput(
-      inputId = "jammer_name",
+      inputId = "jammer_name_other_1",
+      label = "If \"Other\", enter jammer name here",
+      value = "MRD Jammer"
+    ),
+    hr(style = "border-top: 1px solid #000000; margin-top: 0px; margin-bottom: 0px"),
+    selectInput(inputId = "n_blockers_2", 
+                label = "Number of Blockers", 
+                choices = c(4,3,2,1), 
+                selected = 4
+    ),
+    selectInput(
+      inputId = "jammer_name_2",
       label = "Jammer Name",
+      choices = mrd_jammer_list[-1],
+      selected = mrd_jammer_list[2]
+    ),
+    textInput(
+      inputId = "jammer_name_other_2",
+      label = "If \"Other\", enter jammer name here",
       value = "MRD Jammer"
     )
     # textInput(
@@ -69,7 +125,7 @@ ui <- page_sidebar(
     #   value = "Team Block"
     # )
   ),
-  textOutput(outputId = "page_title"),
+  # textOutput(outputId = "page_title"),
   navset_card_underline(
     nav_panel("Instructions & Meta-Data", 
               card(
@@ -94,15 +150,28 @@ ui <- page_sidebar(
                          textInput("team_1", "Team 1", value = "MRD")),
                   column(6, style = "padding-left: 2px;", 
                          textInput("team_2", "Team 2", value = "MRD"))
+                ),
+                fluidRow(
+                  column(6, style = "padding-right: 2px;", 
+                         colourInput(inputId = "team_color_1", label = "Team 1 Color", value = "#187BBE")),
+                  column(6, style = "padding-left: 2px;", 
+                         colourInput(inputId = "team_color_2", label = "Team 2 Color", value = "white"))
                 )),
               card(card_header("Meta-Data Table"),
                    DT::DTOutput(outputId = "meta_data.df"))),
     nav_panel("Record Jams", 
-              card(card_header("Tap the track where the jammer got out"),
-                   plotOutput(outputId = "track_image",
-                              click = "jammer_1_click", 
-                              hover = hoverOpts(id = "jammer_1_hover", delay = 10)),
-                   min_height = "500px"),
+              layout_columns(
+                card(card_header("Tap the track where jammer 1 got out"),
+                     plotOutput(outputId = "track_image_jammer_1",
+                                click = "jammer_1_click", 
+                                hover = hoverOpts(id = "jammer_1_hover", delay = 10)),
+                     min_height = "500px"),
+                card(card_header("Tap the track where jammer 2 got out"),
+                     plotOutput(outputId = "track_image_jammer_2",
+                                click = "jammer_2_click", 
+                                hover = hoverOpts(id = "jammer_1_hover", delay = 10)),
+                     min_height = "500px")
+              ),
               card(card_header("Controls"),
                    fluidRow(
                      column(4, actionButton(inputId = "start_jam_btn",
@@ -166,8 +235,11 @@ server <- function(input, output, session) {
            note_taker = character(), 
            notes = character()))
   
+  jammer_data_1 <- reactiveValues(pass_nbr=NA, name="MRD Jammer 1", n_blockers=4)
+  jammer_data_2 <- reactiveValues(pass_nbr=NA, name="MRD Jammer 2", n_blockers=4)
+  
   jammer_1_coordinates_history <- reactiveValues(x=NA,y=NA)
-  pass_data <- reactiveValues(jam_nbr=NA,pass_nbr=NA,
+  pass_data <- reactiveValues(jam_nbr=NA,
                               jam_start_time=NULL,  
                               jam_elapsed_time=0)
   timer_running <- reactiveVal(FALSE)
@@ -188,16 +260,23 @@ server <- function(input, output, session) {
     } else {
       pass_data$jam_nbr <- pass_data$jam_nbr + 1
     }
-    pass_data$pass_nbr <- 1
+    jammer_data_1$pass_nbr <- 1
+    jammer_data_2$pass_nbr <- 1
+    jammer_data_1$name <- input$jammer_name_1
+    jammer_data_2$name <- input$jammer_name_2
   }
   
-  add_row_to_heatmap_df <- function() {
+  get_jammer_name <- function() {
+    ifelse(input$jammer_name == "Other", input$jammer_name_other, input$jammer_name)
+  }
+  
+  add_row_to_heatmap_df <- function(jammer_data, click_coords) {
     # Storage of click coordinates
     existing <- heatmap.df()
     
-    jam_id <- sprintf("Jam_%i_%02i_%02i", input$half_number, 
-                      pass_data$jam_nbr, pass_data$pass_nbr)
-    timestamp_last_jam <- ifelse(pass_data$pass_nbr == 1, 0, 
+    jam_id <- sprintf("Jam_%i_%02i", input$half_number, 
+                      pass_data$jam_nbr)
+    timestamp_last_pass <- ifelse(jammer_data$pass_nbr == 1, 0, 
                                  tail(existing$time_stamp_in_game,1))
     
     new_row.df <- tibble(date = Sys.Date(), 
@@ -208,38 +287,44 @@ server <- function(input, output, session) {
                          time_stamp_in_game = pass_data$jam_elapsed_time,
                          time_for_this_pass = 
                            pass_data$jam_elapsed_time - 
-                           timestamp_last_jam,
-                         jammer = input$jammer_name,
+                           timestamp_last_pass,
+                         jammer = jammer_data$name,
                          half = input$half_number,
                          jam_number = pass_data$jam_nbr,
-                         pass_number = pass_data$pass_nbr,
+                         pass_number = jammer_data$pass_nbr,
                          initial_or_scoring = ifelse(pass_number == 1, "Initial", "Scoring"),
-                         x_out = input$jammer_1_click$x, 
-                         y_out = input$jammer_1_click$y, 
+                         x_out = click_coords$x, 
+                         y_out = click_coords$y, 
                          distance_form_start = "15",
-                         n_blockers_in_pack = input$n_blockers,
+                         n_blockers_in_pack = jammer_data$n_blockers,
                          jam_duration = 120,
                          note_taker = "Oui", 
                          notes = "None")
     
+    print(heatmap.df())
+    print(new_row.df)
     new_data <- rbind(existing, new_row.df)
     heatmap.df(new_data)
-    print(heatmap.df())
   }
   
   # --- UI Events --- #
   # Click on map to add a new pass
   observeEvent(input$jammer_1_click, {
-    jammer_1_coordinates_history$x <- 
-      c(jammer_1_coordinates_history$x,input$jammer_1_click$x)
-    jammer_1_coordinates_history$y <- 
-      c(jammer_1_coordinates_history$y,input$jammer_1_click$y)
-    
     # Add the row to the heatmap dt
-    add_row_to_heatmap_df()
+    jammer_data_1$n_blockers <- input$n_blockers_1
+    add_row_to_heatmap_df(jammer_data_1, input$jammer_1_click)
     
     # Update the pass number
-    pass_data$pass_nbr <- pass_data$pass_nbr + 1
+    jammer_data_1$pass_nbr <- jammer_data_1$pass_nbr + 1
+  })
+  
+  observeEvent(input$jammer_2_click, {
+    # Add the row to the heatmap dt
+    jammer_data_2$n_blockers <- input$n_blockers_2
+    add_row_to_heatmap_df(jammer_data_2, input$jammer_2_click)
+    
+    # Update the pass number
+    jammer_data_2$pass_nbr <- jammer_data_2$pass_nbr + 1
   })
   
   observeEvent(input$start_jam_btn, {
@@ -257,7 +342,30 @@ server <- function(input, output, session) {
     pass_data$jam_elapsed_time <- 0  # Reset the timer
     pass_data$jam_start_time <- NULL
     updateTextInput(inputId = "jam_number", value = pass_data$jam_nbr + 1)
-    pass_data$pass_nbr <- NA 
+    jammer_data_1$pass_nbr <- NA 
+    jammer_data_2$pass_nbr <- NA 
+  })
+  
+  observeEvent(input$jammer_name_1, {
+    if(input$jammer_name_1 == "Other") {
+      dropdown_list <- mrd_jammer_list
+    } else {
+      dropdown_list <- mrd_jammer_list[mrd_jammer_list != input$jammer_name_1]
+    }
+    
+    updateSelectInput(inputId = "jammer_name_2", selected = input$jammer_name_2,
+                      choices = dropdown_list)
+  })
+  
+  observeEvent(input$jammer_name_2, {
+      if(input$jammer_name_2 == "Other") {
+        dropdown_list <- mrd_jammer_list
+      } else {
+        dropdown_list <- mrd_jammer_list[mrd_jammer_list != input$jammer_name_2]
+      }
+           
+    updateSelectInput(inputId = "jammer_name_1", selected = input$jammer_name_1,
+                      choices = dropdown_list)
   })
   
   # Timer logic
@@ -269,12 +377,12 @@ server <- function(input, output, session) {
       start <- pass_data$jam_start_time
       
       if (!is.null(start)) {
-        elapsed <- as.numeric(current_time - start)
+        elapsed <- as.numeric(difftime(current_time, start, units = "secs"))
         
         # Check if the timer has reached the maximum duration
         if (elapsed >= max_duration) {
           timer_running(FALSE)
-          elapsed_time(0)  # Reset the timer
+          pass_data$jam_elapsed_time <- 0  # Reset the timer
           pass_data$jam_start_time <- NULL # Reset the start time
         } else {
           pass_data$jam_elapsed_time <- elapsed
@@ -316,10 +424,11 @@ server <- function(input, output, session) {
   
   
   # Track Tab
-  output$track_image <- renderPlot({
+  output$track_image_jammer_1 <- renderPlot({
     existing <- heatmap.df()
     current_passes <- existing %>% 
-      filter(jam_number == pass_data$jam_nbr) %>% 
+      filter(jam_number == pass_data$jam_nbr & 
+               jammer == jammer_data_1$name) %>% 
       mutate()
     
     img_dims <- dim(track_img)
@@ -336,12 +445,13 @@ server <- function(input, output, session) {
       track.plot <- track.plot + 
         geom_point(data = current_passes,
                    mapping = aes(x = x_out, 
-                                 y = y_out, 
-                                 fill = factor(pass_number)),
+                                 y = y_out), 
+                                 # fill = factor(pass_number)),
                    shape = 21,
                    size = 4,
-                   color = "black")+ 
-        scale_fill_manual(values = color_scale_points_track)
+                   fill = input$team_color_1,
+                   color = "black")
+        # scale_fill_manual(values = color_scale_points_track)
     }
     
     if(is.null(pass_data$jam_start_time)) {
@@ -356,14 +466,66 @@ server <- function(input, output, session) {
     track.plot + 
       theme_void() + 
       theme(axis.title = element_blank(),
-            legend.position="none") +
+            legend.position="none", 
+            plot.background = element_rect(fill = input$team_color_1)) +
+      ggtitle('Ze Track')
+  })
+  
+  output$track_image_jammer_2 <- renderPlot({
+    existing <- heatmap.df()
+    current_passes <- existing %>% 
+      filter(jam_number == pass_data$jam_nbr & 
+              jammer == jammer_data_2$name) %>% 
+      mutate()
+    
+    img_dims <- dim(track_img)
+    img_height <- img_dims[1]
+    img_width <- img_dims[2]
+    
+    track.plot <- 
+      # ggplot(data.frame(x = c(0,img_width), y = c(0,img_height))) +
+      ggplot() +
+      background_image(track_img) +
+      lims(x = c(0,img_width), y = c(0,img_height))
+    
+    if(nrow(current_passes) > 0 & !is.null(pass_data$jam_start_time)) {
+      track.plot <- track.plot + 
+        geom_point(data = current_passes,
+                   mapping = aes(x = x_out, 
+                                 y = y_out), 
+                   # fill = factor(pass_number)),
+                   shape = 21,
+                   size = 4,
+                   fill = input$team_color_2,
+                   color = "black")
+      # scale_fill_manual(values = color_scale_points_track)
+    }
+    
+    if(is.null(pass_data$jam_start_time)) {
+      track.plot <- track.plot + 
+        geom_text(aes(x = img_width/2, y = img_height/2, 
+                      label = "JAM TIMER STOPPED\nSTART TIMER TO START RECORDING"), 
+                  fontface = "bold", 
+                  color = "red", 
+                  size = 10)
+    }
+    
+    track.plot + 
+      theme_void() + 
+      theme(axis.title = element_blank(),
+            legend.position="none",
+            plot.background = element_rect(fill = input$team_color_2)) +
       ggtitle('Ze Track')
   })
   
   output$timer_display <- renderText({
     seconds <- pass_data$jam_elapsed_time
     minutes <- seconds %/% 60
-    remaining_seconds <- seconds %% 60
+    remaining_seconds <- round(seconds %% 60)
+    if(remaining_seconds == 60) {
+      remaining_seconds <- 00
+      minutes <- 2
+    }
     sprintf("%02.0f:%02.0f", minutes, remaining_seconds)
   })
     
@@ -380,8 +542,9 @@ server <- function(input, output, session) {
               input$team_1, 
               input$team_2)},
     content = function(file){
-      write.csv(heatmap.df(), file, row.names = FALSE)
-  })
+      write.csv(heatmap.df(), file, row.names = FALSE)}, 
+    contentType = "application/octet-stream"
+  )
   
   # Show data tab
   output$where_jammer_got_out_all <- renderPlot({
@@ -424,8 +587,8 @@ server <- function(input, output, session) {
     content = function(file){
       ggsave(file, 
              plot = jammer_out_location_all_dots.plot(), 
-             width = 1.05*input$plot_height * uwm_bb.width/uwm_bb.height, # Need to update that 
-             height = input$plot_height, 
+             width = 1.05 * 7 * img_width/img_height, # Need to update that 
+             height = 7, 
              dpi = 300)
     }
   )
@@ -465,9 +628,9 @@ server <- function(input, output, session) {
               input$team_2)},
     content = function(file){
       ggsave(file, 
-             plot = time_jammer_got_out_all_hist.plot(), 
-             width = 1.05*input$plot_height * uwm_bb.width/uwm_bb.height, # Need to update that 
-             height = input$plot_height, 
+             plot = jammer_out_time_hist.plot(), 
+             width = 6, # Need to update that 
+             height = 3, 
              dpi = 300)
     })
 }

@@ -1,0 +1,13 @@
+name: Jammer_Heatmap
+title: Jammer_Heatmap
+username: negativepotato
+account: negativepotato
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14716390
+bundleId: 10253555
+url: https://negativepotato.shinyapps.io/Jammer_Heatmap/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData
